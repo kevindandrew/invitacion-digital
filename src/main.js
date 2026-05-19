@@ -27,6 +27,67 @@ updateCountdown()
 setInterval(updateCountdown, 1000)
 
 // ══════════════════════════════════════════════════════════
+// YOUTUBE AUDIO — carga al inicio de la página
+// ══════════════════════════════════════════════════════════
+;(function initMusic() {
+  const tag = document.createElement('script')
+  tag.src   = 'https://www.youtube.com/iframe_api'
+  document.head.appendChild(tag)
+
+  window.onYouTubeIframeAPIReady = function () {
+    window._ytPlayer = new YT.Player('yt-iframe', {
+      videoId: 'KZh60U1PqSE',
+      playerVars: {
+        autoplay:    1,
+        controls:    0,
+        rel:         0,
+        loop:        1,
+        playlist:    'KZh60U1PqSE',
+        enablejsapi: 1,
+      },
+      events: {
+        onReady(e) {
+          e.target.setVolume(55)
+          e.target.playVideo()   // intenta autoplay en carga
+        },
+        onStateChange(e) {
+          setMusicIcon(e.data === YT.PlayerState.PLAYING)
+        },
+      },
+    })
+  }
+})()
+
+// Muestra el botón de música 1.5 s tras cargar (antes de abrir el sobre)
+gsap.set('#music-btn', { scale: 0.7, opacity: 0 })
+gsap.to('#music-btn', { opacity: 1, scale: 1, duration: 0.5, delay: 1.5, ease: 'back.out(1.7)' })
+
+document.getElementById('music-btn').addEventListener('click', toggleMusic)
+
+function toggleMusic() {
+  const p = window._ytPlayer
+  if (!p || typeof p.getPlayerState !== 'function') return
+  try {
+    p.getPlayerState() === YT.PlayerState.PLAYING
+      ? p.pauseVideo()
+      : p.playVideo()
+  } catch (_) {}
+}
+
+function setMusicIcon(playing) {
+  document.getElementById('music-btn').classList.toggle('paused', !playing)
+}
+
+// Intenta reanudar si el autoplay fue bloqueado (se llama en primer click del usuario)
+function tryStartMusic() {
+  const p = window._ytPlayer
+  if (!p || typeof p.getPlayerState !== 'function') return
+  try {
+    if (p.getPlayerState() !== YT.PlayerState.PLAYING) p.playVideo()
+  } catch (_) {}
+}
+
+// ══════════════════════════════════════════════════════════
 // ENVELOPE
 // ══════════════════════════════════════════════════════════
 const overlay = document.getElementById('env-overlay')
@@ -50,16 +111,20 @@ gsap.fromTo(
 function openEnvelope() {
   if (opened) return
   opened = true
+
+  // Primera interacción del usuario → música arranca si estaba bloqueada
+  tryStartMusic()
+
   floatTween.kill()
 
   gsap.timeline({ onComplete: launchInvitation })
-    .to('#env-hint',    { opacity: 0, y: 10, duration: 0.25, ease: 'power2.in' }, 0)
-    .to('#env-box',     { y: 0, duration: 0.2, ease: 'power2.out' }, 0)
-    .to('#env-flap',    { scaleY: 0, duration: 0.65, ease: 'power2.in', transformOrigin: '50% 0%' }, 0.15)
-    .to('#env-card',    { y: '-130%', duration: 0.9, ease: 'power2.out' }, 0.5)
-    .to('#env-body-svg',{ opacity: 0, duration: 0.4 }, 0.75)
-    .to('#env-card',    { opacity: 0, y: '-200%', duration: 0.45, ease: 'power2.in' }, 0.95)
-    .to('#env-overlay', { opacity: 0, duration: 0.7, ease: 'power2.inOut' }, 1.1)
+    .to('#env-hint',     { opacity: 0, y: 10, duration: 0.25, ease: 'power2.in' }, 0)
+    .to('#env-box',      { y: 0, duration: 0.2, ease: 'power2.out' }, 0)
+    .to('#env-flap',     { scaleY: 0, duration: 0.65, ease: 'power2.in', transformOrigin: '50% 0%' }, 0.15)
+    .to('#env-card',     { y: '-130%', duration: 0.9, ease: 'power2.out' }, 0.5)
+    .to('#env-body-svg', { opacity: 0, duration: 0.4 }, 0.75)
+    .to('#env-card',     { opacity: 0, y: '-200%', duration: 0.45, ease: 'power2.in' }, 0.95)
+    .to('#env-overlay',  { opacity: 0, duration: 0.7, ease: 'power2.inOut' }, 1.1)
 }
 
 function launchInvitation() {
@@ -68,11 +133,6 @@ function launchInvitation() {
   initScrollReveals()
   initGallery()
   initPetals()
-  initMusic()
-  gsap.fromTo('#music-btn',
-    { opacity: 0, scale: 0.7 },
-    { opacity: 1, scale: 1, duration: 0.5, delay: 2.2, ease: 'back.out(1.7)' }
-  )
 }
 
 envBox.addEventListener('click', openEnvelope)
@@ -133,9 +193,9 @@ function initScrollReveals() {
 // PHOTO GALLERY
 // ══════════════════════════════════════════════════════════
 function initGallery() {
-  const slides  = Array.from(document.querySelectorAll('.gallery-slide'))
-  const dots    = Array.from(document.querySelectorAll('.gallery-dot'))
-  let current   = 0
+  const slides = Array.from(document.querySelectorAll('.gallery-slide'))
+  const dots   = Array.from(document.querySelectorAll('.gallery-dot'))
+  let current  = 0
   let timer
 
   function goTo(index) {
@@ -158,55 +218,6 @@ function initGallery() {
       timer = setInterval(next, 4500)
     })
   })
-}
-
-// ══════════════════════════════════════════════════════════
-// YOUTUBE AUDIO
-// ══════════════════════════════════════════════════════════
-function initMusic() {
-  const tag = document.createElement('script')
-  tag.src   = 'https://www.youtube.com/iframe_api'
-  document.head.appendChild(tag)
-
-  window.onYouTubeIframeAPIReady = function () {
-    window._ytPlayer = new YT.Player('yt-iframe', {
-      videoId: 'KZh60U1PqSE',
-      playerVars: {
-        autoplay:  1,
-        controls:  0,
-        rel:       0,
-        loop:      1,
-        playlist:  'KZh60U1PqSE',
-        enablejsapi: 1,
-      },
-      events: {
-        onReady(e) {
-          e.target.setVolume(55)
-          e.target.playVideo()
-          setMusicIcon(true)
-        },
-        onStateChange(e) {
-          setMusicIcon(e.data === YT.PlayerState.PLAYING)
-        },
-      },
-    })
-  }
-
-  document.getElementById('music-btn').addEventListener('click', toggleMusic)
-}
-
-function toggleMusic() {
-  const p = window._ytPlayer
-  if (!p || typeof p.getPlayerState !== 'function') return
-  try {
-    p.getPlayerState() === YT.PlayerState.PLAYING
-      ? p.pauseVideo()
-      : p.playVideo()
-  } catch (_) {}
-}
-
-function setMusicIcon(playing) {
-  document.getElementById('music-btn').classList.toggle('paused', !playing)
 }
 
 // ══════════════════════════════════════════════════════════
